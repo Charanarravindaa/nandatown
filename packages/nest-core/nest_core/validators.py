@@ -1835,6 +1835,258 @@ def validate_receipt_reputation_honest_confidence(
 
 
 # ---------------------------------------------------------------------------
+# Policy-governance validators
+# ---------------------------------------------------------------------------
+#
+# These prove the policy-enforcement control works: each PASSES under the
+# scenario's ``enforcement: enforced`` toggle and FAILS under ``permissive`` —
+# the same agents, the same scenario, one config switch flips every verdict.
+# Audit lines are ``<prefix>:<json>`` carried in send-event message bodies; we
+# read send events only (the coordinator re-receives copies) and ``json.loads``
+# the body after the known prefix (it is full of colons, so ``split`` won't do).
+
+
+def _as_str_list(value: Any) -> list[str]:
+    """Coerce a possibly-unknown JSON value into a list of strings (else empty)."""
+    if isinstance(value, list):
+        return [str(x) for x in cast("list[Any]", value)]
+    return []
+
+
+def _policy_send_lines(events: list[dict[str, Any]], prefix: str) -> list[dict[str, Any]]:
+    """Return JSON bodies of send-event audit lines beginning with *prefix*."""
+    bodies: list[dict[str, Any]] = []
+    for ev in events:
+        if ev.get("kind") != "send":
+            continue
+        msg = str(ev.get("msg", ""))
+        if not msg.startswith(prefix):
+            continue
+        with contextlib.suppress(json.JSONDecodeError):
+            parsed = json.loads(msg[len(prefix) :])
+            if isinstance(parsed, dict):
+                bodies.append(cast("dict[str, Any]", parsed))
+    return bodies
+
+
+def _announced_manifests(events: list[dict[str, Any]]) -> dict[str, tuple[Any, bool]]:
+    """Map agent -> (parsed manifest, signature-valid?) from ``manifest:`` lines.
+
+    Validity is an offline Ed25519 verification of the manifest's signature
+    against the *announced public key* (never the key_id, which is a hash), using
+    the manifest's own canonical ``signing_bytes`` — the exact bytes it was signed
+    over, so there is zero serialization drift.
+
+    Trust boundary: this checks key<->signature *consistency* (the announced key
+    signed the announced manifest), not key *ownership*. Offline, the trace has no
+    trusted key directory binding a public key to an ``agent_id`` — the runtime
+    enforcer does that via the identity peer-registry. So this catches the
+    scenario's threat (a manifest signed by a key other than the one announced),
+    but a self-consistent impostor announcing its own (key, signature) pair would
+    read as valid here. Ownership binding is the runtime's job, not the trace's.
+    """
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    from nest_plugins_reference.policy.manifest import PolicyManifest
+
+    result: dict[str, tuple[Any, bool]] = {}
+    for body in _policy_send_lines(events, "manifest:"):
+        agent = str(body.get("agent", ""))
+        man_dict = body.get("manifest")
+        pubkey_hex = str(body.get("pubkey", ""))
+        if not isinstance(man_dict, dict):
+            continue
+        try:
+            manifest = PolicyManifest.model_validate(man_dict)
+        except ValueError:
+            result[agent] = (None, False)
+            continue
+        valid = False
+        if manifest.signature is not None and pubkey_hex:
+            try:
+                pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(pubkey_hex))
+                pub.verify(manifest.signature.value, manifest.signing_bytes())
+                valid = True
+            except (InvalidSignature, ValueError):
+                valid = False
+        result[agent] = (manifest, valid)
+    return result
+
+
+def validate_policy_manifest_signatures(
+    events: list[dict[str, Any]],
+) -> list[ValidationResult]:
+    """No agent with an invalid (forged/unsigned) manifest may take any action.
+
+    Enforced: the forged agent is governed by a deny-all policy, so it never acts
+    -> PASS. Permissive: its actions succeed -> FAIL.
+
+    Example::
+
+        results = validate_policy_manifest_signatures(events)
+    """
+    announced = _announced_manifests(events)
+    acting = {str(a.get("agent", "")) for a in _policy_send_lines(events, "action:")}
+    offenders = sorted(
+        agent for agent, (_m, valid) in announced.items() if not valid and agent in acting
+    )
+    if offenders:
+        return [
+            ValidationResult(
+                "policy_manifest_signatures",
+                False,
+                f"agents with invalid manifests took action: {offenders}",
+            )
+        ]
+    return [
+        ValidationResult(
+            "policy_manifest_signatures",
+            True,
+            f"{len(announced)} manifests announced; no invalid-manifest agent acted",
+        )
+    ]
+
+
+def validate_policy_tool_allowlist(
+    events: list[dict[str, Any]],
+) -> list[ValidationResult]:
+    """Every successful ``register`` stays within the agent's declared tools.
+
+    Example::
+
+        results = validate_policy_tool_allowlist(events)
+    """
+    announced = _announced_manifests(events)
+    violations: list[str] = []
+    for act in _policy_send_lines(events, "action:"):
+        if act.get("op") != "register":
+            continue
+        agent = str(act.get("agent", ""))
+        manifest, valid = announced.get(agent, (None, False))
+        if manifest is None or not valid:
+            continue  # forged/unsigned manifest handled by the signature validator
+        bad = [c for c in _as_str_list(act.get("capabilities")) if c not in manifest.tools]
+        if bad:
+            violations.append(f"{agent}:{bad}")
+    if violations:
+        return [
+            ValidationResult(
+                "policy_tool_allowlist",
+                False,
+                f"registrations beyond allowlist: {sorted(violations)}",
+            )
+        ]
+    return [ValidationResult("policy_tool_allowlist", True, "all registrations within allowlist")]
+
+
+def validate_policy_data_exposure(
+    events: list[dict[str, Any]],
+) -> list[ValidationResult]:
+    """Every successful ``expose`` targets only the manifest-permitted audience.
+
+    Example::
+
+        results = validate_policy_data_exposure(events)
+    """
+    announced = _announced_manifests(events)
+    violations: list[str] = []
+    for act in _policy_send_lines(events, "action:"):
+        if act.get("op") != "expose":
+            continue
+        agent = str(act.get("agent", ""))
+        manifest, valid = announced.get(agent, (None, False))
+        if manifest is None or not valid:
+            continue
+        data_class = str(act.get("data_class", ""))
+        audience = _as_str_list(act.get("audience"))
+        allowed = manifest.data.get(data_class)
+        if allowed is None:
+            violations.append(f"{agent}:{data_class}:undeclared")
+        elif "*" not in allowed:
+            bad = [a for a in audience if a not in allowed]
+            if bad:
+                violations.append(f"{agent}:{data_class}:{bad}")
+    if violations:
+        return [
+            ValidationResult(
+                "policy_data_exposure", False, f"exposures beyond policy: {sorted(violations)}"
+            )
+        ]
+    return [ValidationResult("policy_data_exposure", True, "all exposures within policy")]
+
+
+def validate_policy_budget_cap(
+    events: list[dict[str, Any]],
+) -> list[ValidationResult]:
+    """Cumulative successful spend per agent never exceeds its manifest cap.
+
+    Example::
+
+        results = validate_policy_budget_cap(events)
+    """
+    announced = _announced_manifests(events)
+    spent: dict[str, int] = defaultdict(int)
+    for act in _policy_send_lines(events, "action:"):
+        if act.get("op") != "pay":
+            continue
+        amount = act.get("amount")
+        if isinstance(amount, int) and not isinstance(amount, bool):
+            spent[str(act.get("agent", ""))] += amount
+    violations: list[str] = []
+    for agent, (manifest, valid) in announced.items():
+        if manifest is None or not valid:
+            continue
+        cap = manifest.budget.cap if manifest.budget is not None else 0
+        if spent.get(agent, 0) > cap:
+            violations.append(f"{agent}:{spent[agent]}>{cap}")
+    if violations:
+        return [
+            ValidationResult("policy_budget_cap", False, f"spend over cap: {sorted(violations)}")
+        ]
+    return [ValidationResult("policy_budget_cap", True, "all spend within cap")]
+
+
+def validate_policy_approval_required(
+    events: list[dict[str, Any]],
+) -> list[ValidationResult]:
+    """Every over-threshold pay was authorized by a matching prior approval.
+
+    Example::
+
+        results = validate_policy_approval_required(events)
+    """
+    announced = _announced_manifests(events)
+    approvals = {
+        (str(b.get("agent", "")), b.get("amount")) for b in _policy_send_lines(events, "approval:")
+    }
+    violations: list[str] = []
+    for act in _policy_send_lines(events, "action:"):
+        if act.get("op") != "pay":
+            continue
+        agent = str(act.get("agent", ""))
+        manifest, valid = announced.get(agent, (None, False))
+        if manifest is None or not valid:
+            continue
+        amount = act.get("amount")
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            continue
+        thresholds = [a.threshold for a in manifest.approvals if a.op == "pay"]
+        if thresholds and amount > min(thresholds) and (agent, amount) not in approvals:
+            violations.append(f"{agent}:{amount}")
+    if violations:
+        return [
+            ValidationResult(
+                "policy_approval_required",
+                False,
+                f"over-threshold pays without approval: {sorted(violations)}",
+            )
+        ]
+    return [
+        ValidationResult("policy_approval_required", True, "all over-threshold pays authorized")
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Validator registry
 # ---------------------------------------------------------------------------
 
@@ -1888,5 +2140,12 @@ VALIDATORS: dict[str, list[Any]] = {
     "receipt_reputation": [
         validate_receipt_reputation_ring_severed,
         validate_receipt_reputation_honest_confidence,
+    ],
+    "policy_governance": [
+        validate_policy_manifest_signatures,
+        validate_policy_tool_allowlist,
+        validate_policy_data_exposure,
+        validate_policy_budget_cap,
+        validate_policy_approval_required,
     ],
 }

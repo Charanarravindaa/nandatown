@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from nest_core.types import AgentId
 from nest_core.validators import (
     VALIDATORS,
     ValidationResult,
@@ -20,6 +21,11 @@ from nest_core.validators import (
     validate_marketplace_no_double_sell,
     validate_marketplace_price_agreement,
     validate_marketplace_responses,
+    validate_policy_approval_required,
+    validate_policy_budget_cap,
+    validate_policy_data_exposure,
+    validate_policy_manifest_signatures,
+    validate_policy_tool_allowlist,
     validate_reputation_scoring,
     validate_reputation_warnings,
     validate_supply_chain_no_lost,
@@ -754,9 +760,265 @@ class TestValidatorRegistry:
             "streaming_payments",
             "comms_versioning",
             "receipt_reputation",
+            "policy_governance",
         }
         assert set(VALIDATORS.keys()) == expected
 
     def test_each_scenario_has_validators(self) -> None:
         for scenario, validators in VALIDATORS.items():
             assert len(validators) >= 2, f"{scenario} needs at least 2 validators"
+
+
+# ---------------------------------------------------------------------------
+# Policy-governance: the single-toggle flip (the charter contract)
+# ---------------------------------------------------------------------------
+
+
+class TestPolicyGovernanceFlip:
+    """Every policy validator PASSES under `enforced` and FAILS under `permissive`.
+
+    Same scenario, same agents, one config switch — the FAIL-vs-default /
+    PASS-vs-yours contract, driven end-to-end through the real PolicyEnforcer.
+    """
+
+    _YAML = Path(__file__).parent.parent.parent.parent / "scenarios" / "policy_governance.yaml"
+
+    async def _results(self, tmp_path: Path, enforcement: str) -> list[ValidationResult]:
+        from nest_core.runner import ScenarioRunner
+        from nest_core.scenario import ScenarioConfig
+
+        config = ScenarioConfig.from_yaml(self._YAML)
+        config.task.config["enforcement"] = enforcement
+        trace = tmp_path / f"{enforcement}.jsonl"
+        config.output.trace = str(trace)
+        result = await ScenarioRunner(config).run()
+        return validate_trace(result, "policy_governance")
+
+    async def test_enforced_all_pass(self, tmp_path: Path) -> None:
+        results = await self._results(tmp_path, "enforced")
+        assert len(results) == 5
+        assert all(r.passed for r in results), [str(r) for r in results if not r.passed]
+
+    async def test_permissive_all_fail(self, tmp_path: Path) -> None:
+        results = await self._results(tmp_path, "permissive")
+        assert len(results) == 5
+        assert all(not r.passed for r in results), [str(r) for r in results if r.passed]
+
+    async def test_every_validator_flips(self, tmp_path: Path) -> None:
+        enforced = {r.name: r.passed for r in await self._results(tmp_path, "enforced")}
+        permissive = {r.name: r.passed for r in await self._results(tmp_path, "permissive")}
+        for name in enforced:
+            assert enforced[name] is True, f"{name} should PASS enforced"
+            assert permissive[name] is False, f"{name} should FAIL permissive"
+
+
+# ---------------------------------------------------------------------------
+# Policy-governance: per-validator synthetic-trace unit tests
+# ---------------------------------------------------------------------------
+
+
+def _pline(agent: str, kind: str, body: dict[str, Any]) -> Event:
+    return {
+        "ts": 1.0,
+        "agent": agent,
+        "kind": "send",
+        "to": "coordinator-0",
+        "msg": kind + ":" + json.dumps(body, sort_keys=True),
+    }
+
+
+def _announce(
+    agent: str,
+    *,
+    tools: tuple[str, ...] = (),
+    data: dict[str, list[str]] | None = None,
+    cap: int | None = None,
+    threshold: int | None = None,
+    seed: bytes = b"seed",
+    signer_seed: bytes | None = None,
+    widen_tools: list[str] | None = None,
+) -> Event:
+    from nest_plugins_reference.identity.ed25519_rotating import Ed25519RotatingIdentity
+    from nest_plugins_reference.policy.manifest import (
+        Approval,
+        Budget,
+        PolicyManifest,
+        sign_manifest,
+    )
+
+    announcer = Ed25519RotatingIdentity(AgentId(agent), seed=seed)
+    signer = Ed25519RotatingIdentity(AgentId(agent), seed=signer_seed) if signer_seed else announcer
+    manifest = PolicyManifest(
+        agent_id=AgentId(agent),
+        tools=list(tools),
+        data=data or {},
+        budget=Budget(cap=cap) if cap is not None else None,
+        approvals=[Approval(op="pay", threshold=threshold)] if threshold is not None else [],
+    )
+    man_dict = sign_manifest(signer, manifest).model_dump(mode="json")
+    if widen_tools is not None:
+        man_dict["tools"] = widen_tools  # tamper AFTER signing -> signature mismatch
+    return _pline(
+        agent,
+        "manifest",
+        {"agent": agent, "manifest": man_dict, "pubkey": announcer.public_key.hex()},
+    )
+
+
+def _action(agent: str, **body: Any) -> Event:
+    return _pline(agent, "action", {"agent": agent, **body})
+
+
+def _approval(agent: str, amount: int) -> Event:
+    return _pline(agent, "approval", {"agent": agent, "amount": amount})
+
+
+class TestPolicyManifestSignatures:
+    def test_valid_agent_acting_passes(self) -> None:
+        events = [
+            _announce("a", tools=("sell",)),
+            _action("a", op="register", capabilities=["sell"]),
+        ]
+        assert validate_policy_manifest_signatures(events)[0].passed
+
+    def test_invalid_manifest_without_action_passes(self) -> None:
+        # mismatched signer -> invalid, but it never acts -> PASS
+        events = [_announce("a", tools=("sell",), signer_seed=b"attacker")]
+        assert validate_policy_manifest_signatures(events)[0].passed
+
+    def test_invalid_manifest_acting_fails(self) -> None:
+        events = [
+            _announce("a", signer_seed=b"attacker"),
+            _action("a", op="register", capabilities=[]),
+        ]
+        result = validate_policy_manifest_signatures(events)[0]
+        assert not result.passed
+        assert "a" in result.detail
+
+    def test_tampered_manifest_acting_fails(self) -> None:
+        events = [
+            _announce("a", tools=("sell",), widen_tools=["sell", "admin"]),
+            _action("a", op="register", capabilities=["admin"]),
+        ]
+        assert not validate_policy_manifest_signatures(events)[0].passed
+
+    def test_self_consistent_impostor_passes_known_limitation(self) -> None:
+        # Offline verify checks key<->signature consistency, not ownership: a
+        # self-consistent (announced key == signing key) impostor reads as valid.
+        events = [
+            _announce("a", tools=("sell",), seed=b"impostor", signer_seed=b"impostor"),
+            _action("a", op="register", capabilities=["sell"]),
+        ]
+        assert validate_policy_manifest_signatures(events)[0].passed
+
+
+class TestPolicyToolAllowlist:
+    def test_within_allowlist_passes(self) -> None:
+        events = [
+            _announce("a", tools=("sell",)),
+            _action("a", op="register", capabilities=["sell"]),
+        ]
+        assert validate_policy_tool_allowlist(events)[0].passed
+
+    def test_overclaim_fails(self) -> None:
+        events = [
+            _announce("a", tools=("sell",)),
+            _action("a", op="register", capabilities=["sell", "admin"]),
+        ]
+        result = validate_policy_tool_allowlist(events)[0]
+        assert not result.passed
+        assert "admin" in result.detail
+
+    def test_skips_invalid_manifest_agent(self) -> None:
+        # An invalid-manifest agent is handled by the signature validator, not here.
+        events = [
+            _announce("a", tools=("sell",), signer_seed=b"attacker"),
+            _action("a", op="register", capabilities=["admin"]),
+        ]
+        assert validate_policy_tool_allowlist(events)[0].passed
+
+
+class TestPolicyDataExposure:
+    def test_allowed_audience_passes(self) -> None:
+        events = [
+            _announce("a", data={"default": ["coordinator-0"]}),
+            _action("a", op="expose", data_class="default", audience=["coordinator-0"]),
+        ]
+        assert validate_policy_data_exposure(events)[0].passed
+
+    def test_disallowed_audience_fails(self) -> None:
+        events = [
+            _announce("a", data={"default": ["coordinator-0"]}),
+            _action("a", op="expose", data_class="default", audience=["evil-corp"]),
+        ]
+        assert not validate_policy_data_exposure(events)[0].passed
+
+    def test_wildcard_audience_passes(self) -> None:
+        events = [
+            _announce("a", data={"public": ["*"]}),
+            _action("a", op="expose", data_class="public", audience=["anyone"]),
+        ]
+        assert validate_policy_data_exposure(events)[0].passed
+
+
+class TestPolicyBudgetCap:
+    def test_within_cap_passes(self) -> None:
+        events = [
+            _announce("a", cap=100),
+            _action("a", op="pay", amount=40, currency="credits"),
+            _action("a", op="pay", amount=50, currency="credits"),
+        ]
+        assert validate_policy_budget_cap(events)[0].passed
+
+    def test_cumulative_over_cap_fails(self) -> None:
+        events = [
+            _announce("a", cap=100),
+            _action("a", op="pay", amount=60, currency="credits"),
+            _action("a", op="pay", amount=60, currency="credits"),
+        ]
+        result = validate_policy_budget_cap(events)[0]
+        assert not result.passed
+        assert "120>100" in result.detail
+
+
+class TestPolicyApprovalRequired:
+    def test_over_threshold_with_approval_passes(self) -> None:
+        events = [
+            _announce("a", cap=1000, threshold=50),
+            _approval("a", 80),
+            _action("a", op="pay", amount=80, currency="credits"),
+        ]
+        assert validate_policy_approval_required(events)[0].passed
+
+    def test_over_threshold_without_approval_fails(self) -> None:
+        events = [
+            _announce("a", cap=1000, threshold=50),
+            _action("a", op="pay", amount=80, currency="credits"),
+        ]
+        assert not validate_policy_approval_required(events)[0].passed
+
+    def test_under_threshold_needs_no_approval(self) -> None:
+        events = [
+            _announce("a", cap=1000, threshold=50),
+            _action("a", op="pay", amount=40, currency="credits"),
+        ]
+        assert validate_policy_approval_required(events)[0].passed
+
+
+class TestPolicyValidatorsTotal:
+    def test_never_raise_on_garbage(self) -> None:
+        events: list[Event] = [
+            {"ts": 1.0, "agent": "x", "kind": "send", "to": "y", "msg": "manifest:{not json"},
+            {"ts": 1.0, "agent": "x", "kind": "send", "to": "y", "msg": "action:{bad"},
+            {"ts": 1.0, "agent": "x", "kind": "receive", "to": "y", "msg": "action:{}"},
+        ]
+        for fn in (
+            validate_policy_manifest_signatures,
+            validate_policy_tool_allowlist,
+            validate_policy_data_exposure,
+            validate_policy_budget_cap,
+            validate_policy_approval_required,
+        ):
+            results = fn(events)
+            assert len(results) == 1
+            assert isinstance(results[0].passed, bool)
