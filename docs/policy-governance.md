@@ -128,6 +128,21 @@ different axis. `policy_auth` reuses the manifest as the source of truth for tok
 scopes, but the heart of the control is the `PolicyEnforcer` runtime block and the
 validators that prove it held.
 
+## Where this sits in the 12 blocks
+
+This contribution does two things at once:
+
+- **It improves the `auth` block** — `policy_auth` is a new `Auth`-protocol plugin
+  (registered via `pyproject.toml` entry point and `_BUILTINS`) that clamps token
+  scopes to a signed manifest, where the reference `jwt` clamps nothing.
+- **It surfaces a block-shaped gap the stack does not yet have: policy governance.**
+  Enforcing an agent's declared behaviour (tools, data, spend, authorization) is
+  cross-cutting — it spans payments, registry, and privacy — so it does not fit
+  inside any single existing block. We prototype it here as a runtime enforcer + a
+  scenario + validators (no core edits), and propose **governance as a candidate
+  new block**. Making it a first-class 13th layer (a `policy` entry in the layer
+  registry, `LayerConfig`, and the runner) is the natural follow-up.
+
 ## Files
 
 - `packages/nest-plugins-reference/nest_plugins_reference/policy/` — `manifest.py`,
