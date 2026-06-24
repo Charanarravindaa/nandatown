@@ -97,3 +97,9 @@ def _try_load_builtin(name: str) -> None:
         )
 
         register_scenario("receipt_reputation", receipt_reputation_factory)
+    elif name == "policy_governance":
+        from nest_core.scenarios_builtin.policy_governance import (
+            policy_governance_factory,
+        )
+
+        register_scenario("policy_governance", policy_governance_factory)
