@@ -10,7 +10,7 @@ def test_nest_sdk_imports() -> None:
 
 
 def test_sdk_exports_all_layers() -> None:
-    """All 12 layer interfaces are importable from nest_sdk."""
+    """All 13 layer interfaces are importable from nest_sdk."""
     from nest_sdk import (
         Auth,
         CommsProtocol,
@@ -20,6 +20,7 @@ def test_sdk_exports_all_layers() -> None:
         Memory,
         Negotiation,
         Payments,
+        Policy,
         Privacy,
         Registry,
         Transport,
@@ -35,12 +36,13 @@ def test_sdk_exports_all_layers() -> None:
         Memory,
         Negotiation,
         Payments,
+        Policy,
         Privacy,
         Registry,
         Transport,
         Trust,
     ]
-    assert len(layers) == 12
+    assert len(layers) == 13
 
 
 def test_sdk_exports_core_types() -> None:

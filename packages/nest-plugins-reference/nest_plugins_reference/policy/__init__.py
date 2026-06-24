@@ -20,6 +20,7 @@ Example::
 
 from __future__ import annotations
 
+from nest_plugins_reference.policy.allow_all import AllowAllPolicy
 from nest_plugins_reference.policy.decide import (
     Decision,
     PolicyState,
@@ -39,6 +40,7 @@ from nest_plugins_reference.policy.manifest import (
 from nest_plugins_reference.policy.scopes import scope_to_op
 
 __all__ = [
+    "AllowAllPolicy",
     "Approval",
     "Budget",
     "Decision",

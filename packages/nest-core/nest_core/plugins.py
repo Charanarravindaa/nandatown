@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Plugin registry — resolves plugin names to implementations.
 
-Discovers plugins via entry points and provides built-in defaults for all 12 layers.
+Discovers plugins via entry points and provides built-in defaults for all 13 layers.
 
 Example::
 
@@ -38,6 +38,7 @@ _BUILTINS: dict[tuple[str, str], str] = {
     ("memory", "lww_register"): f"{_REF}.memory.lww_register:LwwRegisterMemory",
     ("privacy", "noop"): f"{_REF}.privacy.noop:NoopPrivacy",
     ("datafacts", "datafacts_v1"): f"{_REF}.datafacts.datafacts_v1:DataFactsV1",
+    ("policy", "allow_all"): f"{_REF}.policy.allow_all:AllowAllPolicy",
 }
 
 
@@ -74,6 +75,7 @@ class PluginRegistry:
             "memory",
             "privacy",
             "datafacts",
+            "policy",
         ]:
             group = f"nest.plugins.{layer}"
             eps = importlib.metadata.entry_points(group=group)

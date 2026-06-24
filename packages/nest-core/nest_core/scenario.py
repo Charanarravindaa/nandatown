@@ -63,7 +63,7 @@ class AgentConfig(BaseModel):
 
 
 class LayerConfig(BaseModel):
-    """Plugin selection for each of the 12 layers.
+    """Plugin selection for each of the 13 layers.
 
     Example::
 
@@ -82,6 +82,7 @@ class LayerConfig(BaseModel):
     memory: str = "blackboard"
     privacy: str = "noop"
     datafacts: str = "datafacts_v1"
+    policy: str = "allow_all"
 
 
 class TaskConfig(BaseModel):

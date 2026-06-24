@@ -19,6 +19,7 @@ from nest_core.layers.identity import Identity as Identity
 from nest_core.layers.memory import Memory as Memory
 from nest_core.layers.negotiation import Negotiation as Negotiation
 from nest_core.layers.payments import Payments as Payments
+from nest_core.layers.policy import Policy as Policy
 from nest_core.layers.privacy import Privacy as Privacy
 from nest_core.layers.registry import Registry as Registry
 from nest_core.layers.transport import Transport as Transport
@@ -74,6 +75,7 @@ __all__ = [
     "Memory",
     "Negotiation",
     "Payments",
+    "Policy",
     "Privacy",
     "Registry",
     "Transport",

@@ -73,6 +73,7 @@ class ScenarioRunner:
             "memory": self._registry.resolve("memory", layers.memory),
             "privacy": self._registry.resolve("privacy", layers.privacy),
             "datafacts": self._registry.resolve("datafacts", layers.datafacts),
+            "policy": self._registry.resolve("policy", layers.policy),
         }
 
     def _create_agents(self, plugins: dict[str, Any]) -> dict[AgentId, Any]:

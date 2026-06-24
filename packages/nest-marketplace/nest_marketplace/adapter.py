@@ -48,6 +48,7 @@ KNOWN_LAYERS: tuple[str, ...] = (
     "memory",
     "privacy",
     "datafacts",
+    "policy",
 )
 
 # Display labels for layers.
@@ -64,6 +65,7 @@ LAYER_LABELS: dict[str, str] = {
     "memory": "Memory",
     "privacy": "Privacy",
     "datafacts": "Data Facts",
+    "policy": "Policy",
 }
 
 # One-line blurbs lifted from `docs/concepts.md` so the UI doesn't have
@@ -81,6 +83,7 @@ LAYER_BLURBS: dict[str, str] = {
     "memory": "Shared key-value with subscribe and CAS.",
     "privacy": "Encryption and zero-knowledge proofs.",
     "datafacts": "Dataset publish, fetch, and ACL.",
+    "policy": "Govern what agents may do — tools, data, spend, authorization.",
 }
 
 # Map free-form theme slugs into our canonical layer keys. Authors put
@@ -102,6 +105,7 @@ _THEME_TO_LAYER: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"\bmemory\b|\bsemantic\b|\bblackboard\b"), "memory"),
     (re.compile(r"\bprivacy\b|\bzk\b|\bencrypt"), "privacy"),
     (re.compile(r"\bdatafact|\bdataset\b"), "datafacts"),
+    (re.compile(r"\bpolicy\b|\bgovernance\b|\benforcement\b"), "policy"),
 )
 
 

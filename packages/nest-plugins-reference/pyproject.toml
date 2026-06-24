@@ -39,6 +39,9 @@ lww_register = "nest_plugins_reference.memory.lww_register:LwwRegisterMemory"
 [project.entry-points."nest.plugins.auth"]
 policy_auth = "nest_plugins_reference.auth.policy_auth:PolicyAuth"
 
+[project.entry-points."nest.plugins.policy"]
+allow_all = "nest_plugins_reference.policy.allow_all:AllowAllPolicy"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

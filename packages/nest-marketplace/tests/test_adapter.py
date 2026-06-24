@@ -323,7 +323,7 @@ def test_build_dataset_aggregates_layer_stats_and_top_score() -> None:
     assert ds.stats["total_submissions"] == 3
     assert ds.stats["unique_participants"] == 3
     assert ds.stats["layers_covered"] == 2  # trust + payments
-    assert ds.stats["layers_total"] == 12
+    assert ds.stats["layers_total"] == 13
     assert ds.stats["total_lines_added"] == 1000
 
     layer_map = {ls.key: ls for ls in ds.layers}

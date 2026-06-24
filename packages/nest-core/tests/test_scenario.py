@@ -116,6 +116,7 @@ class TestPluginRegistry:
             ("memory", "blackboard"),
             ("privacy", "noop"),
             ("datafacts", "datafacts_v1"),
+            ("policy", "allow_all"),
         ]:
             cls = reg.resolve(layer, name)
             assert cls is not None, f"Failed to resolve {layer}/{name}"

@@ -266,6 +266,7 @@ def doctor() -> None:
             "memory",
             "privacy",
             "datafacts",
+            "policy",
         ]
         plugin_ok = 0
         for layer_name in layers:
@@ -303,6 +304,7 @@ def _default_for(layer: str) -> str:
         "memory": "blackboard",
         "privacy": "noop",
         "datafacts": "datafacts_v1",
+        "policy": "allow_all",
     }
     return defaults[layer]
 

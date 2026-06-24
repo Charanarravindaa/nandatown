@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Layer interface definitions for all 12 pluggable layers.
+"""Layer interface definitions for all 13 pluggable layers.
 
 Example::
 
@@ -14,6 +14,7 @@ from nest_core.layers.identity import Identity
 from nest_core.layers.memory import Memory
 from nest_core.layers.negotiation import Negotiation
 from nest_core.layers.payments import Payments
+from nest_core.layers.policy import Policy
 from nest_core.layers.privacy import Privacy
 from nest_core.layers.registry import Registry
 from nest_core.layers.transport import Transport
@@ -28,6 +29,7 @@ __all__ = [
     "Memory",
     "Negotiation",
     "Payments",
+    "Policy",
     "Privacy",
     "Registry",
     "Transport",

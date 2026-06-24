@@ -12,6 +12,7 @@ from nest_core.layers import (
     Memory,
     Negotiation,
     Payments,
+    Policy,
     Privacy,
     Registry,
     Transport,
@@ -19,8 +20,8 @@ from nest_core.layers import (
 )
 
 
-def test_all_12_layers_importable() -> None:
-    """All 12 layer protocols can be imported from nest_core.layers."""
+def test_all_13_layers_importable() -> None:
+    """All 13 layer protocols can be imported from nest_core.layers."""
     layers = [
         Auth,
         CommsProtocol,
@@ -30,12 +31,13 @@ def test_all_12_layers_importable() -> None:
         Memory,
         Negotiation,
         Payments,
+        Policy,
         Privacy,
         Registry,
         Transport,
         Trust,
     ]
-    assert len(layers) == 12
+    assert len(layers) == 13
 
 
 def test_layers_are_runtime_checkable() -> None:
@@ -49,6 +51,7 @@ def test_layers_are_runtime_checkable() -> None:
         Memory,
         Negotiation,
         Payments,
+        Policy,
         Privacy,
         Registry,
         Transport,

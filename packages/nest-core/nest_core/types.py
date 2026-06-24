@@ -250,6 +250,26 @@ class AuthContext(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Policy types
+# ---------------------------------------------------------------------------
+
+
+class PolicyDecision(BaseModel):
+    """Outcome of a policy-layer authorization check: allow plus a reason.
+
+    Returned by :class:`nest_core.layers.policy.Policy.authorize`. A denied
+    decision carries a human-readable ``reason`` an enforcer can surface.
+
+    Example::
+
+        decision = PolicyDecision(allowed=False, reason="budget exceeded")
+    """
+
+    allowed: bool
+    reason: str = ""
+
+
+# ---------------------------------------------------------------------------
 # Trust types
 # ---------------------------------------------------------------------------
 

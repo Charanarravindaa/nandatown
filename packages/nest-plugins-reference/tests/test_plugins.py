@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Conformance tests for all 12 reference plugins."""
+"""Conformance tests for all 13 reference plugins."""
 
 from __future__ import annotations
 
@@ -520,3 +520,36 @@ class TestDataFactsV1:
         df = DataFactsV1()
         with pytest.raises(KeyError):
             await df.fetch(DataFactsUrl("df://missing"))
+
+
+# ---------------------------------------------------------------------------
+# 13. Policy: allow_all
+# ---------------------------------------------------------------------------
+
+
+class TestAllowAllPolicy:
+    def test_satisfies_policy_protocol(self) -> None:
+        from nest_core.layers.policy import Policy
+        from nest_plugins_reference.policy.allow_all import AllowAllPolicy
+
+        assert isinstance(AllowAllPolicy(), Policy)
+
+    @pytest.mark.asyncio
+    async def test_authorize_allows_everything(self) -> None:
+        from nest_plugins_reference.policy.allow_all import AllowAllPolicy
+
+        policy = AllowAllPolicy()
+        decision = await policy.authorize(AgentId("a1"), "pay", {"amount": 999_999})
+        assert decision.allowed is True
+
+    def test_record_success_is_noop(self) -> None:
+        from nest_plugins_reference.policy.allow_all import AllowAllPolicy
+
+        policy = AllowAllPolicy()
+        assert policy.record_success(AgentId("a1"), "pay", {"amount": 10}) is None
+
+    def test_resolvable_via_registry(self) -> None:
+        from nest_core.plugins import PluginRegistry
+        from nest_plugins_reference.policy.allow_all import AllowAllPolicy
+
+        assert PluginRegistry().resolve("policy", "allow_all") is AllowAllPolicy
