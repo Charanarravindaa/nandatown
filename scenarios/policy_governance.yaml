@@ -28,6 +28,7 @@ layers:
   memory: blackboard
   privacy: noop
   datafacts: datafacts_v1
+  policy: manifest_policy
 
 task:
   type: policy_governance

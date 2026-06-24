@@ -41,6 +41,7 @@ policy_auth = "nest_plugins_reference.auth.policy_auth:PolicyAuth"
 
 [project.entry-points."nest.plugins.policy"]
 allow_all = "nest_plugins_reference.policy.allow_all:AllowAllPolicy"
+manifest_policy = "nest_plugins_reference.policy.manifest_policy:ManifestPolicy"
 
 [build-system]
 requires = ["hatchling"]

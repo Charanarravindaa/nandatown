@@ -39,6 +39,7 @@ _BUILTINS: dict[tuple[str, str], str] = {
     ("privacy", "noop"): f"{_REF}.privacy.noop:NoopPrivacy",
     ("datafacts", "datafacts_v1"): f"{_REF}.datafacts.datafacts_v1:DataFactsV1",
     ("policy", "allow_all"): f"{_REF}.policy.allow_all:AllowAllPolicy",
+    ("policy", "manifest_policy"): f"{_REF}.policy.manifest_policy:ManifestPolicy",
 }
 
 

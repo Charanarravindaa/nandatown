@@ -20,9 +20,9 @@ validators can verify signatures offline.
 The single ``enforcement`` config toggle is the whole experiment:
 
 * ``enforced`` (default) wraps each agent's plugins in a
-  :class:`~nest_plugins_reference.policy.enforcer.PolicyEnforcer` (one shared
-  :class:`PolicyState` per agent) — byzantine attempts are blocked, so the trace
-  contains no successful violation.
+  :class:`~nest_plugins_reference.policy.enforcer.PolicyEnforcer` that consults
+  the shared policy layer (the decision authority, which holds per-agent state)
+  — byzantine attempts are blocked, so the trace contains no successful violation.
 * ``permissive`` hands agents the raw plugins — the same byzantine attempts
   succeed and appear as ``action:`` lines.
 
@@ -189,7 +189,7 @@ class CoordinatorAgent(StateMachineAgent):
 
     Example::
 
-        coord = CoordinatorAgent(AgentId("coordinator-0"), actors, grants, states)
+        coord = CoordinatorAgent(AgentId("coordinator-0"), actors, grants, policy)
     """
 
     def __init__(
@@ -197,26 +197,25 @@ class CoordinatorAgent(StateMachineAgent):
         agent_id: AgentId,
         actors: list[AgentId],
         grants: list[tuple[AgentId, int]],
-        states: dict[AgentId, Any],
+        policy: Any,
     ) -> None:
         self._id = agent_id
         self._actors = actors
         self._grants = grants
-        self._states = states
+        self._policy = policy
 
     async def on_start(self, ctx: AgentContext) -> None:
         """Grant approvals (announced before any action), then pulse the actors.
+
+        Grants flow through the policy layer (the decision authority), so the
+        enforcer's later ``authorize`` check sees them.
 
         Example::
 
             await coord.on_start(ctx)
         """
-        from nest_plugins_reference.policy.decide import approval_key
-
         for aid, amount in self._grants:
-            state = self._states.get(aid)
-            if state is not None:
-                state.grant(approval_key("pay", amount))
+            self._policy.grant(aid, "pay", amount)
             line = "approval:" + json.dumps({"agent": str(aid), "amount": amount}, sort_keys=True)
             await ctx.send(self._id, line.encode())
         for aid in self._actors:
@@ -232,23 +231,21 @@ class CoordinatorAgent(StateMachineAgent):
         return
 
 
-def _provision(
-    config: ScenarioConfig, plugins: dict[str, Any]
-) -> tuple[dict[AgentId, Any], dict[AgentId, Any]]:
-    """Wire identities, signed manifests, per-agent states, and (proxied) plugins.
+def _provision(config: ScenarioConfig, plugins: dict[str, Any]) -> tuple[Any, dict[AgentId, Any]]:
+    """Wire identities, signed manifests, the policy layer, and (proxied) plugins.
 
-    Returns ``(states, announced)`` — the per-agent :class:`PolicyState` map (for
-    the coordinator to grant approvals) and the as-announced signed manifests (for
-    building the actors). Honours the ``enforcement: enforced|permissive`` task
-    config: the enforced path wraps each agent's plugins in a
-    :class:`PolicyEnforcer` sharing one state per agent; the permissive path hands
-    agents the raw plugins.
+    Returns ``(policy, announced)`` — the shared policy-layer instance (the
+    decision authority, for the coordinator to grant approvals) and the
+    as-announced signed manifests (for building the actors). Honours the
+    ``enforcement: enforced|permissive`` task config: the enforced path wraps each
+    agent's plugins in a :class:`PolicyEnforcer` that consults the shared policy
+    layer; the permissive path hands agents the raw plugins. Either way the policy
+    instance is put in ``plugins["policy"]`` so the layer is genuinely in the run.
 
     Example::
 
-        states, announced = _provision(config, plugins)
+        policy, announced = _provision(config, plugins)
     """
-    from nest_plugins_reference.policy.decide import PolicyState
     from nest_plugins_reference.policy.enforcer import PolicyEnforcer
     from nest_plugins_reference.policy.manifest import (
         Approval,
@@ -257,6 +254,7 @@ def _provision(
         sign_manifest,
         verify_manifest,
     )
+    from nest_plugins_reference.policy.manifest_policy import ManifestPolicy
 
     enforced = str(config.task.config.get("enforcement", "enforced")) == "enforced"
     all_ids = [_COORDINATOR, *_ACTORS]
@@ -281,9 +279,6 @@ def _provision(
             approvals=[Approval(op="pay", threshold=50)],
         )
 
-    def deny_all(aid: AgentId) -> PolicyManifest:
-        return PolicyManifest(agent_id=aid)
-
     # Sign each actor's manifest with its own key — except the forged agent, whose
     # manifest is signed by a *different* key, so it fails verification.
     signed: dict[AgentId, PolicyManifest] = {}
@@ -296,24 +291,39 @@ def _provision(
     else:
         signed[_FORGED] = author(_FORGED)
 
-    # Verify against each agent's real identity; the policy actually enforced is
-    # the verified manifest, or deny-all when verification fails (forged).
-    enforced_manifest: dict[AgentId, PolicyManifest] = {}
+    # Verify against each agent's real identity; only verified manifests are added
+    # to the policy layer. A forged agent's manifest fails verification, is not
+    # added, and is therefore governed by the layer's deny-all fallback.
     valid: dict[AgentId, PolicyManifest] = {}
     for aid in _ACTORS:
         ident = identities.get(aid)
         if ident is not None and verify_manifest(ident, signed[aid]):
-            enforced_manifest[aid] = signed[aid]
             valid[aid] = signed[aid]
-        else:
-            enforced_manifest[aid] = deny_all(aid)
 
-    states: dict[AgentId, Any] = {aid: PolicyState() for aid in _ACTORS}
+    # The policy layer is the decision authority. Instantiate the resolved policy
+    # plugin class into ONE shared instance, register every verified manifest, and
+    # put it in plugins["policy"] so the layer is genuinely part of the run. The
+    # scenario REQUIRES the manifest-backed PDP (it must accept manifests + grants);
+    # fail loud on a mismatch rather than silently swapping one in, which would mask
+    # a misconfigured `policy:` layer (e.g. `allow_all`) and mislead anyone probing
+    # the layer's load-bearing role.
+    policy_cls = plugins.get("policy")
+    policy = policy_cls() if isinstance(policy_cls, type) else None
+    if not isinstance(policy, ManifestPolicy):
+        got = type(policy).__name__ if policy is not None else "none"
+        msg = (
+            "policy_governance requires the 'manifest_policy' PDP "
+            f"(set layers.policy: manifest_policy); got {got!r}"
+        )
+        raise ValueError(msg)
+    for manifest in valid.values():
+        policy.add_manifest(manifest)
+    plugins["policy"] = policy
 
     def wrap(aid: AgentId, raw: Any, data_class: str = "default") -> Any:
         if not enforced:
             return raw
-        return PolicyEnforcer(aid, enforced_manifest[aid], raw, states[aid], data_class)
+        return PolicyEnforcer(aid, policy, raw, data_class)
 
     agent_plugins: dict[AgentId, dict[str, Any]] = plugins.setdefault("_agent_plugins", {})
 
@@ -358,7 +368,7 @@ def _provision(
         agent_plugins.setdefault(aid, {})["identity"] = ident
     plugins.pop("identity", None)
 
-    return states, dict(signed)
+    return policy, dict(signed)
 
 
 def policy_governance_factory(
@@ -371,7 +381,7 @@ def policy_governance_factory(
 
         agents = policy_governance_factory(config, plugins)
     """
-    states, announced = _provision(config, plugins)
+    policy, announced = _provision(config, plugins)
     agent_plugins: dict[AgentId, dict[str, Any]] = plugins.get("_agent_plugins", {})
 
     def identity_of(aid: AgentId) -> Any:
@@ -379,7 +389,7 @@ def policy_governance_factory(
 
     agents: dict[AgentId, StateMachineAgent] = {}
     agents[_COORDINATOR] = CoordinatorAgent(
-        _COORDINATOR, _ACTORS, grants=[(_HONEST_APPROVED, _APPROVED_AMOUNT)], states=states
+        _COORDINATOR, _ACTORS, grants=[(_HONEST_APPROVED, _APPROVED_AMOUNT)], policy=policy
     )
     for aid in _ACTORS:
         agents[aid] = GovernedActor(
