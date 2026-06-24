@@ -34,6 +34,7 @@ from nest_plugins_reference.policy.manifest import (
     sign_manifest,
     verify_manifest,
 )
+from nest_plugins_reference.policy.scopes import scope_to_op
 
 __all__ = [
     "Approval",
@@ -44,6 +45,7 @@ __all__ = [
     "PolicyState",
     "PolicyViolationError",
     "decide",
+    "scope_to_op",
     "sign_manifest",
     "verify_manifest",
 ]
