@@ -24,8 +24,10 @@ from nest_plugins_reference.policy.decide import (
     Decision,
     PolicyState,
     PolicyViolationError,
+    approval_key,
     decide,
 )
+from nest_plugins_reference.policy.enforcer import PolicyEnforcer
 from nest_plugins_reference.policy.manifest import (
     Approval,
     Budget,
@@ -41,9 +43,11 @@ __all__ = [
     "Budget",
     "Decision",
     "ManifestSigner",
+    "PolicyEnforcer",
     "PolicyManifest",
     "PolicyState",
     "PolicyViolationError",
+    "approval_key",
     "decide",
     "scope_to_op",
     "sign_manifest",

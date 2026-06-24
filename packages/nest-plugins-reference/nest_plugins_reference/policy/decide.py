@@ -52,6 +52,19 @@ class PolicyViolationError(Exception):
         super().__init__(f"policy violation by {agent_id!r} on {op!r}: {reason}")
 
 
+def approval_key(op: str, amount: int) -> str:
+    """Return the canonical approval key for an amount-bound *op*.
+
+    The single source of the key string so :func:`decide` (which checks it) and
+    the enforcer (which consumes it) cannot drift apart.
+
+    Example::
+
+        assert approval_key("pay", 500) == "pay:500"
+    """
+    return f"{op}:{amount}"
+
+
 @dataclass
 class Decision:
     """Outcome of a policy check: ``allowed`` plus a ``reason`` when denied.
@@ -77,7 +90,7 @@ class PolicyState:
 
         state = PolicyState()
         state.record_spend("credits", 100)
-        state.grant("pay")
+        state.grant("pay:500")  # use approval_key("pay", 500)
     """
 
     spent: dict[str, int] = field(default_factory=lambda: dict[str, int]())
@@ -95,9 +108,12 @@ class PolicyState:
     def grant(self, key: str) -> None:
         """Record that approval *key* has been granted.
 
+        Use :func:`approval_key` to build the key, e.g.
+        ``state.grant(approval_key("pay", 500))``.
+
         Example::
 
-            state.grant("pay")
+            state.grant("pay:500")
         """
         self.approvals.add(key)
 
@@ -182,7 +198,7 @@ def decide(
         thresholds = [a.threshold for a in manifest.approvals if a.op == "pay"]
         if thresholds:
             threshold = min(thresholds)
-            if amount > threshold and f"pay:{amount}" not in state.approvals:
+            if amount > threshold and approval_key("pay", amount) not in state.approvals:
                 return Decision(
                     False,
                     f"requires authorization: amount {amount} > threshold {threshold}",
