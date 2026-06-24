@@ -21,6 +21,7 @@ export type LayerKey =
   | "memory"
   | "privacy"
   | "datafacts"
+  | "policy"
   | "unclassified";
 
 export interface SubmissionAuthor {
@@ -100,7 +101,7 @@ export const EMPTY_STATS: MarketplaceStats = {
   total_submissions: 0,
   unique_participants: 0,
   layers_covered: 0,
-  layers_total: 12,
+  layers_total: 13,
   total_lines_added: 0,
   total_files_changed: 0,
 };

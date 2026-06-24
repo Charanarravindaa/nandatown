@@ -17,7 +17,7 @@ const TOC: TocItem[] = [
   { id: 'installation', label: 'Installation' },
   { id: 'first-experiment', label: 'Your first experiment' },
   { id: 'scenarios', label: 'Scenario YAML reference' },
-  { id: 'layers', label: 'The twelve layers' },
+  { id: 'layers', label: 'The thirteen layers' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'templates', label: 'Agent templates' },
   { id: 'plugins', label: 'Writing a plugin' },
@@ -384,7 +384,7 @@ export default function DocsPage() {
           <Section id="tiers" title="Tier 1 vs Tier 2">
             <p className="mb-8 text-[1.05rem] leading-[1.7] text-ink-500">
               Nanda Town has two ways to run. Both use the same scenario file,
-              the same twelve layers, and the same trace file. The only
+              the same thirteen layers, and the same trace file. The only
               difference is how the agents make their choices.
             </p>
 
@@ -541,7 +541,7 @@ pip install "nest-core[plugins]"`}
             </CodeBlock>
             <p className="mt-3 mb-8 text-[0.95rem] text-ink-500">
               This installs the Nanda Town engine, the <InlineCode>nest</InlineCode>{' '}
-              command, the plugins for all 12 layers, and the seven
+              command, the plugins for all 13 layers, and the seven
               built-in scenarios. The venv keeps it separate from your other
               Python projects so nothing clashes.
             </p>
@@ -600,7 +600,7 @@ Nanda Town doctor
   [OK] plugin registry
   [OK] scenario runner
   [OK] simulator
-  [OK] all 12 default plugins resolve
+  [OK] all 13 default plugins resolve
 ========================================
 7/7 checks passed`}
             </TerminalBlock>
@@ -779,9 +779,9 @@ output:
           <div className="h-px bg-cream-400/70" />
 
           {/* Layers */}
-          <Section id="layers" title="The twelve layers">
+          <Section id="layers" title="The thirteen layers">
             <p className="mb-6 text-[1.05rem] leading-[1.7] text-ink-500">
-              Nanda Town splits what an agent can do into twelve layers. Think
+              Nanda Town splits what an agent can do into thirteen layers. Think
               of them like floors in a building, each handling one job. Every
               layer comes with a default version you can swap for your own.
               Agents reach a layer with{' '}
@@ -889,7 +889,7 @@ nest templates duplicate <src> <dest>  # Copy and modify`}
           {/* Plugins */}
           <Section id="plugins" title="Writing a plugin">
             <p className="mb-6 text-[1.05rem] leading-[1.7] text-ink-500">
-              You can swap any of the twelve layers for your own version. A
+              You can swap any of the thirteen layers for your own version. A
               plugin is a Python class that has the methods the layer expects.
               You hook it in with Python entry points.
             </p>
@@ -1121,7 +1121,7 @@ my_decay = "my_trust.plugin:DecayTrust"`}
                     Yes &mdash; into a Python 3.12+ venv:{' '}
                     <InlineCode>pip install &quot;nest-core[plugins]&quot;</InlineCode>.
                     That installs the engine, the <InlineCode>nest</InlineCode>{' '}
-                    CLI, and all twelve default plugins. See{' '}
+                    CLI, and all thirteen default plugins. See{' '}
                     <a href="#installation" className="text-rust hover:text-rust/80 underline underline-offset-2">
                       Installation
                     </a>{' '}

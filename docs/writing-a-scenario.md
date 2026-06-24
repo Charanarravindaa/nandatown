@@ -1,7 +1,7 @@
 # Writing a scenario
 
 A scenario YAML pins together: how many agents, which plugin to use for
-each of the 12 layers, what task they run, what failures to inject, how
+each of the 13 layers, what task they run, what failures to inject, how
 long to run, and where to write the trace.
 
 The fastest way to get a valid scenario is to copy a built-in one and

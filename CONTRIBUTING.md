@@ -96,7 +96,7 @@ uv run ruff format .
 uv run nest doctor
 ```
 
-This checks Python version, core imports, and plugin resolution for all 12 layers.
+This checks Python version, core imports, and plugin resolution for all 13 layers.
 
 ## Code Style
 
@@ -270,7 +270,7 @@ Consider adding property-based tests with Hypothesis for protocol invariants (se
 
 ## Writing a Plugin
 
-A plugin implements one of the 12 layer interfaces defined in `packages/nest-core/nest_core/layers/`. All interfaces use `typing.Protocol` (structural typing), so your class does not need to inherit from the interface -- it just needs to implement the same method signatures.
+A plugin implements one of the 13 layer interfaces defined in `packages/nest-core/nest_core/layers/`. All interfaces use `typing.Protocol` (structural typing), so your class does not need to inherit from the interface -- it just needs to implement the same method signatures.
 
 ### Step 1: Implement the interface
 

@@ -8,7 +8,7 @@ go deeper.
 
 - **[quickstart.md](quickstart.md)** — Install, run a scenario,
   validate the trace. Five minutes, no clone required.
-- **[concepts.md](concepts.md)** — The 12 layers, fidelity tiers,
+- **[concepts.md](concepts.md)** — The 13 layers, fidelity tiers,
   scenarios, plugins, traces, determinism.
 
 ## Build something
@@ -43,6 +43,7 @@ where to look for inspiration.
 | Memory | [memory.md](layers/memory.md) | `blackboard` |
 | Privacy | [privacy.md](layers/privacy.md) | `noop` |
 | Data Facts | [datafacts.md](layers/datafacts.md) | `datafacts_v1` |
+| Policy | [policy.md](layers/policy.md) | `allow_all` |
 
 ## Going further
 

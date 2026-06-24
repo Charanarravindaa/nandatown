@@ -339,7 +339,7 @@ def _scrape_submission_fields(text: str) -> tuple[str | None, str | None, str | 
     layer = None
     layer_match = re.search(
         r"\b(trust|identity|registry|transport|payments|negotiation|memory|coordination|"
-        r"communication|privacy|auth|datafacts)\b",
+        r"communication|privacy|auth|datafacts|policy)\b",
         text,
         re.IGNORECASE,
     )

@@ -102,7 +102,7 @@ export default async function HackathonLandingPage() {
           <Stat
             label="Submissions"
             value={String(data.stats.total_submissions)}
-            hint="across all 12 layers"
+            hint="across all 13 layers"
           />
           <Stat
             label="Participants"

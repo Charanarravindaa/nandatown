@@ -8,7 +8,7 @@ Get from zero to a validated trace in about a minute.
 pip install "nest-core[plugins]"
 ```
 
-This installs the CLI, the reference plugins for all 12 layers, and the
+This installs the CLI, the reference plugins for all 13 layers, and the
 seven built-in scenarios. No `git clone` required.
 
 Optional extras:

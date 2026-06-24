@@ -51,6 +51,7 @@ const protocolLayers = [
   { name: 'Memory', description: 'Shared notes that stick around.' },
   { name: 'Privacy', description: 'Keeping data secret and proving facts without revealing them.' },
   { name: 'Data Facts', description: 'Sharing and checking datasets.' },
+  { name: 'Policy', description: 'Govern what agents may do — tools, data, spend, authorization.' },
 ];
 
 function useAnimatedMessages(messages: AgentMessage[], intervalMs = 1800) {
@@ -123,7 +124,7 @@ export default function Home() {
 
               <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-cream-400/70 pt-6">
                 <Stat label="Scenarios" value="6" />
-                <Stat label="Layers" value="12" />
+                <Stat label="Layers" value="13" />
                 <Stat label="License" value="Apache 2.0" />
               </dl>
             </div>
@@ -278,7 +279,7 @@ export default function Home() {
                 alt="Layered translucent warm-orange and beige rectangles overlapping like protocol stacks on a cream paper background."
                 sizes="(min-width: 1024px) 42vw, 100vw"
                 prompt="Abstract composition of overlapping translucent warm orange and beige rectangles, layered like protocol stacks. Slight rotation, hand-cut paper aesthetic, subtle drop shadows. Each rectangle is a different shade of cream/rust. Quiet, editorial, scientific-but-warm. No text. Palette: #F0EDE4, #E8E4D6, #C45A3C, #6B6557."
-                caption="Section — the twelve layers"
+                caption="Section — the thirteen layers"
               />
               <div className="mt-10 max-w-md">
                 <p className="font-display text-[1.45rem] leading-snug italic text-ink-700">
@@ -295,7 +296,7 @@ export default function Home() {
       </section>
 
       {/* ============================================================ */}
-      {/*  THE 12 LAYERS                                                  */}
+      {/*  THE 13 LAYERS                                                  */}
       {/* ============================================================ */}
       <section className="border-t border-cream-400/70 bg-cream-50">
         <div className="mx-auto max-w-[1240px] px-6 sm:px-10 py-24">
@@ -303,7 +304,7 @@ export default function Home() {
             <div>
               <p className="eyebrow">Architecture</p>
               <h2 className="font-display mt-5 text-[clamp(2rem,4vw,3.4rem)] leading-[1.05] tracking-tight text-ink-900">
-                The twelve<br />
+                The thirteen<br />
                 <span className="italic text-ink-700">protocol layers.</span>
               </h2>
             </div>

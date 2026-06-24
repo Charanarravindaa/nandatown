@@ -193,6 +193,7 @@ layers:
   memory: blackboard
   privacy: noop
   datafacts: datafacts_v1
+  policy: allow_all
 
 task:
   type: marketplace

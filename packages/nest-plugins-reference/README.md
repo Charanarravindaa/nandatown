@@ -1,6 +1,6 @@
 # nest-plugins-reference
 
-Nanda Town reference plugins: default implementations for all 12 layers
+Nanda Town reference plugins: default implementations for all 13 layers
 
 Part of [Nanda Town](https://github.com/projnanda/nandatown), built at MIT Media Lab.
 

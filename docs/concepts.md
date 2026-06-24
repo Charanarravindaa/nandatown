@@ -7,9 +7,9 @@ exercise it, and a trace you can validate.
 
 This document explains the pieces that make that work.
 
-## The 12 layers
+## The 13 layers
 
-Nanda Town decomposes the agent stack into 12 Python `Protocol`s (structural
+Nanda Town decomposes the agent stack into 13 Python `Protocol`s (structural
 typing — no inheritance required). Every scenario picks one
 implementation per layer.
 
@@ -27,6 +27,7 @@ implementation per layer.
 | 10 | **Memory** | Shared K/V with subscribe + CAS. | `blackboard` |
 | 11 | **Privacy** | Encrypt, decrypt, zero-knowledge proofs. | `noop` (stub passthrough) |
 | 12 | **Data Facts** | Dataset publish / fetch / ACL. | `datafacts_v1` |
+| 13 | **Policy** | Govern tools, data, spend, authorization. | `allow_all` (permissive passthrough) |
 
 All reference defaults are deliberately simplified — testing scaffolding,
 not production code. The point is to replace the one layer you care
@@ -40,7 +41,7 @@ signatures and a pointer to its reference plugin.
 A scenario is a YAML file that pins together:
 
 - **agents**: how many, what roles, what brain (state-machine or LLM)
-- **layers**: which plugin to use for each of the 12 layers
+- **layers**: which plugin to use for each of the 13 layers
 - **task**: what the agents are *trying* to do (`marketplace`, `auction`, …)
 - **failures**: drop rate, Byzantine fraction, partitions
 - **duration / seed / output**: how long to run, what to seed, where to write the trace
@@ -60,7 +61,7 @@ schema. The seven scenarios bundled with `nest-core` are:
 
 ## Plugins
 
-A plugin is a Python package that implements one of the 12 layer
+A plugin is a Python package that implements one of the 13 layer
 interfaces. Nanda Town discovers plugins via `importlib.metadata` entry points
 under the group `nest.plugins.<layer>`:
 

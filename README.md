@@ -43,7 +43,7 @@ That's the whole "hello world". No clone, no path, no setup.
 - [The 60-second tour](#the-60-second-tour)
 - [Test your own protocol](#test-your-own-protocol)
 - [Built-in scenarios](#built-in-scenarios)
-- [The 12 layers](#the-12-layers)
+- [The 13 layers](#the-13-layers)
 - [Validators](#validators)
 - [Fidelity tiers](#fidelity-tiers)
 - [Determinism &amp; what the clock does](#determinism--what-the-clock-does)
@@ -84,7 +84,7 @@ details and judge-panel internals are in the
 pip install "nest-core[plugins]"
 ```
 
-That brings in the reference implementations for all 12 layers, the CLI,
+That brings in the reference implementations for all 13 layers, the CLI,
 and the seven built-in scenarios. Optionally:
 
 ```bash
@@ -213,7 +213,7 @@ a scenario at it, watch what changes in the trace, run validators
 against the trace. Repeat with `failures.message_drop: 0.05`, with 10×
 more agents, with a Byzantine fraction — the same flow.
 
-You can do this for any of the 12 layers. Trust, coordination, identity,
+You can do this for any of the 13 layers. Trust, coordination, identity,
 auth — all of them follow the same recipe.
 
 ---
@@ -245,7 +245,7 @@ failures:
 
 ---
 
-## The 12 layers
+## The 13 layers
 
 Every layer is a Python `Protocol` (structural typing). Plugins are
 resolved by name via entry points or a built-in default.
@@ -264,6 +264,7 @@ resolved by name via entry points or a built-in default.
 | 10 | Memory        | `Memory`        | `blackboard` (shared KV, subscribe, CAS) |
 | 11 | Privacy       | `Privacy`       | `noop` (stub passthrough) |
 | 12 | Data Facts    | `DataFacts`     | `datafacts_v1` (dataset publish · fetch · ACL) |
+| 13 | Policy        | `Policy`        | `allow_all` (permissive passthrough; default) |
 
 All defaults are **reference implementations for testing**, not
 production-ready. That is the point: you replace the layer you care about

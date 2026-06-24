@@ -5,7 +5,7 @@
 
 On an open agent network, a fleet discovers and transacts with strangers. That
 collapses if a declared identity/capability set isn't tied to actual behaviour.
-Across the 12 layers, most security gaps already ship a stub *and* a reference
+Across the 13 layers, most security gaps already ship a stub *and* a reference
 plugin — but one gap had **no mechanism at all**: declared capabilities are never
 enforced against behaviour, and there is no notion of spend caps, data-exposure
 limits, or actions requiring authorization. This control fills that gap and lets
@@ -59,11 +59,13 @@ covered by unit tests).
   scopes to the manifest — the unbounded reference `jwt` mints any scope; this
   mints only manifest-permitted ones. This is the auth-layer surface (unit-tested);
   the scenario demonstration is driven by the `PolicyEnforcer`.
-- **`PolicyEnforcer`** (the real block): a per-agent proxy wrapping each layer
-  plugin. A governed call that exceeds the manifest raises `PolicyViolationError`
+- **`PolicyEnforcer`** (the enforcement arm of the `policy` layer): a per-agent proxy
+  wrapping each layer plugin. It consults the `policy` layer's PDP (`manifest_policy`)
+  before each governed call; a call the PDP denies raises `PolicyViolationError`
   *before* the underlying effect — money never moves, data is never exposed to
-  a disallowed audience, a capability is never registered. In-policy calls
-  delegate and update per-agent state (cumulative spend, single-use approvals).
+  a disallowed audience, a capability is never registered. In-policy calls delegate
+  and report `record_success`, so the PDP — not the enforcer — tracks per-agent state
+  (cumulative spend, single-use approvals). The layer decides; the enforcer obeys.
 - **Validators** (`VALIDATORS["policy_governance"]`): corroborate from the trace.
 
 ## The experiment: one toggle flips everything
@@ -107,10 +109,10 @@ Honesty here is part of the design.
 - **Raw `ctx.send` is the one ungated egress path.** Data is just bytes, so an
   agent could exfiltrate via raw messaging instead of the governed privacy layer.
   In the scenario, data exposure is routed through the privacy layer (governed).
-  Closing the raw path for an adversarial agent needs a context-level gate, which
-  lives in the simulator core; we kept the submission in-scope (no core edits) and
-  document the boundary. The framework has no pluggable per-message egress hook —
-  a transport/runtime in a real deployment is where that gate belongs.
+  Closing the raw path for an adversarial agent needs a context-level egress gate
+  in the simulator core, which we did not add. The framework has no pluggable
+  per-message egress hook — a transport/runtime in a real deployment is where that
+  gate belongs.
 - **In-process agents are not sandboxed.** The control governs the plugin *handle*
   an agent is given; an agent reaching around it via Python internals is the same
   un-isolated-runtime limitation. A production runtime isolates the agent.
@@ -128,20 +130,22 @@ different axis. `policy_auth` reuses the manifest as the source of truth for tok
 scopes, but the heart of the control is the `PolicyEnforcer` runtime block and the
 validators that prove it held.
 
-## Where this sits in the 12 blocks
+## Where this sits in the 13 blocks
 
 This contribution does two things at once:
 
 - **It improves the `auth` block** — `policy_auth` is a new `Auth`-protocol plugin
   (registered via `pyproject.toml` entry point and `_BUILTINS`) that clamps token
   scopes to a signed manifest, where the reference `jwt` clamps nothing.
-- **It surfaces a block-shaped gap the stack does not yet have: policy governance.**
-  Enforcing an agent's declared behaviour (tools, data, spend, authorization) is
-  cross-cutting — it spans payments, registry, and privacy — so it does not fit
-  inside any single existing block. We prototype it here as a runtime enforcer + a
-  scenario + validators (no core edits), and propose **governance as a candidate
-  new block**. Making it a first-class 13th layer (a `policy` entry in the layer
-  registry, `LayerConfig`, and the runner) is the natural follow-up.
+- **It ships a first-class 13th block: `policy`.** Enforcing an agent's declared
+  behaviour (tools, data, spend, authorization) is cross-cutting — it spans
+  payments, registry, and privacy — so it does not fit inside any single existing
+  block. It is now a real layer: a `Policy` protocol in the layer registry, a
+  `policy:` entry in `LayerConfig`, and resolution through the runner. You select it
+  in a scenario with `policy: manifest_policy` (the load-bearing PDP); the default
+  is `allow_all`, a permissive passthrough that leaves every pre-existing scenario
+  byte-identical. `manifest_policy` is the decision authority and the `PolicyEnforcer`
+  is its enforcement arm — the layer, not the enforcer, decides.
 
 ## Files
 

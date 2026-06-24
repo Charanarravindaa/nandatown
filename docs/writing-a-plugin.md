@@ -1,6 +1,6 @@
 # Writing a plugin
 
-A Nanda Town plugin implements one of the 12 layer interfaces and is
+A Nanda Town plugin implements one of the 13 layer interfaces and is
 discovered by `nest run` via Python entry points.
 
 This guide walks through a complete, end-to-end **payments** plugin.
@@ -17,9 +17,9 @@ The same flow applies to any layer — just swap `payments` for
 
 ## Step 1: Pick a layer
 
-The twelve layers are: `transport`, `comms`, `identity`, `registry`,
+The thirteen layers are: `transport`, `comms`, `identity`, `registry`,
 `auth`, `trust`, `payments`, `coordination`, `negotiation`, `memory`,
-`privacy`, `datafacts`.
+`privacy`, `datafacts`, `policy`.
 
 To see what each one requires, read either:
 

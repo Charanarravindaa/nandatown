@@ -13,7 +13,7 @@ export const revalidate = 300;
 export const metadata = {
   title: "Hackathon layers — Nanda Town",
   description:
-    "Browse hackathon submissions by the 12 Nanda Town protocol layers.",
+    "Browse hackathon submissions by the 13 Nanda Town protocol layers.",
 };
 
 export default async function HackathonLayersPage() {
@@ -34,7 +34,7 @@ export default async function HackathonLayersPage() {
 
           <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr] lg:items-end">
             <h1 className="font-display animate-fade-in stagger-1 text-[clamp(2.4rem,5.4vw,4.2rem)] leading-[1.04] tracking-tight text-ink-900">
-              Twelve layers.
+              Thirteen layers.
               <br />
               <span className="italic text-ink-700">One stack.</span>
             </h1>
