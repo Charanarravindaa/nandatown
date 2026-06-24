@@ -37,25 +37,31 @@ loosen it at runtime — tampering invalidates the signature.
                        PolicyManifest (signed, identity-bound)
                                    │
                           decide(manifest, op, args, state)   ← the single PDP
-                          ┌────────┴────────┐
-            policy_auth (Auth plugin)   PolicyEnforcer (PEP proxy)
-            clamps token scopes         BLOCKS out-of-policy plugin calls
-                                        (raises PolicyViolationError)
-                                   │
-                          trace (action: / policy_denied:)
-                                   │
-                       policy_governance validators  ← prove it held
+                          ┌────────┴─────────────┐
+            policy_auth (Auth plugin)      PolicyEnforcer (PEP proxy)
+            clamps token scopes            BLOCKS out-of-policy plugin calls
+            (unit-tested at the            (raises PolicyViolationError)
+             auth layer)                            │
+                                          trace (action: / policy_denied:)
+                                                    │
+                                       policy_governance validators ← prove it held
 ```
+
+Both surfaces call the one `decide()` core. The **scenario's** runtime block — and
+the validator flip below — is driven by the `PolicyEnforcer`; `policy_auth` is the
+auth-layer surface of the same decision (its scope-clamp-vs-`jwt` behaviour is
+covered by unit tests).
 
 - **PDP — `decide()`** (`nest_plugins_reference/policy/decide.py`): one pure
   function both surfaces call, so they can never disagree on what the policy
   permits.
 - **`policy_auth`** (Auth-layer plugin, registered): `issue()` clamps a token's
   scopes to the manifest — the unbounded reference `jwt` mints any scope; this
-  mints only manifest-permitted ones.
+  mints only manifest-permitted ones. This is the auth-layer surface (unit-tested);
+  the scenario demonstration is driven by the `PolicyEnforcer`.
 - **`PolicyEnforcer`** (the real block): a per-agent proxy wrapping each layer
   plugin. A governed call that exceeds the manifest raises `PolicyViolationError`
-  *before* the underlying effect — money never moves, data is never encrypted for
+  *before* the underlying effect — money never moves, data is never exposed to
   a disallowed audience, a capability is never registered. In-policy calls
   delegate and update per-agent state (cumulative spend, single-use approvals).
 - **Validators** (`VALIDATORS["policy_governance"]`): corroborate from the trace.

@@ -3,7 +3,7 @@
 
 A governed capability is expressed as a structured scope string. This module is
 the *single source* of that grammar so every surface agrees: the ``policy_auth``
-plugin clamps requested scopes by parsing them here, and the M5 trace validators
+plugin clamps requested scopes by parsing them here, and the trace validators
 decode token scopes the same way before re-checking them against the manifest.
 
 Grammar (anything else parses to ``None`` and is treated as not-grantable):

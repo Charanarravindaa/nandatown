@@ -105,7 +105,7 @@ def test_signature_transplant_rejected() -> None:
 def test_signed_manifest_json_roundtrip_still_verifies() -> None:
     # The signed manifest must serialise to JSON (raw signature bytes -> hex)
     # and round-trip back to a manifest that still verifies. This is the
-    # M4 trace-announcement / M5 validator-decode contract.
+    # trace-announcement / validator-decode contract (JSON round-trip).
     ident = _ident()
     signed = sign_manifest(
         ident,

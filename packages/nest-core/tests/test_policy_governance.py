@@ -4,7 +4,7 @@
 Proves the scenario is deterministic and that the single ``enforcement`` toggle
 flips behaviour: under ``enforced`` the byzantine and forged agents are blocked
 (no successful ``action:`` lines), while under ``permissive`` the same attempts
-succeed. The validator-level flip lives in M5's test_validators.
+succeed. The validator-level flip lives in test_validators.
 
 Example::
 
@@ -88,7 +88,7 @@ async def test_approved_pay_present_under_enforced(tmp_path: Path) -> None:
 
 
 async def test_manifest_signatures_verifiable_offline(tmp_path: Path) -> None:
-    # The linchpin: M5 must be able to verify each announced manifest's signature
+    # The linchpin: validators must be able to verify each announced manifest's signature
     # offline against the announced pubkey, and detect the forged one.
     from cryptography.exceptions import InvalidSignature
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey

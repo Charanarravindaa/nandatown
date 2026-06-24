@@ -7,8 +7,11 @@ This is one of two enforcement surfaces over the shared decision core
 the reference ``jwt`` auth (which mints whatever scopes are requested),
 :class:`PolicyAuth` only grants scopes the subject's manifest permits — a
 requested scope outside the manifest is dropped from the issued token, and a
-subject with no manifest gets a deny-all (empty-scope) token. That is what makes
-the same scenario pass under ``policy_auth`` and fail under ``jwt``.
+subject with no manifest gets a deny-all (empty-scope) token. So at the auth
+layer this denies a scope that ``jwt`` would hand out (see the unit test
+``test_flip_vs_jwt_at_auth_layer``). In the ``policy_governance`` scenario the
+runtime block is driven by the :class:`PolicyEnforcer` toggle, not by this
+plugin; ``policy_auth`` is the auth-layer surface of the same decision core.
 
 Manifest *signature* verification is the scenario factory's job — it binds each
 manifest to the agent's identity at wrap time and only hands verified manifests

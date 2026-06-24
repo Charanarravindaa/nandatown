@@ -5,7 +5,7 @@ This is the second surface over the shared decision core (the first being the
 ``policy_auth`` plugin). It wraps a layer-plugin instance for one agent and
 routes that plugin's governed methods through :func:`decide`. An out-of-policy
 call **raises** :class:`PolicyViolationError` so the underlying effect never
-happens — money is not moved, data is not encrypted-for-an-audience, a capability
+happens — money is not moved, data is not exposed to an audience, a capability
 is not registered. In-policy calls delegate to the wrapped plugin and update the
 agent's :class:`PolicyState` (cumulative spend, single-use approvals). Every
 other attribute is delegated unchanged, so the proxy is a drop-in for the plugin.

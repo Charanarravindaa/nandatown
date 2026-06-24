@@ -122,7 +122,7 @@ def test_resolvable_via_plugin_registry() -> None:
     assert cls is PolicyAuth
 
 
-# scope_to_op grammar oracle (the grammar M5 validators reuse).
+# scope_to_op grammar oracle (the grammar the trace validators reuse).
 def test_scope_grammar_oracle() -> None:
     assert scope_to_op("tool:buy") == ("tool", {"name": "buy"})
     assert scope_to_op("spend:100") == ("pay", {"amount": 100})
