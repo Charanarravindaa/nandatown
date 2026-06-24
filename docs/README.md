@@ -19,6 +19,10 @@ go deeper.
 - **[writing-a-scenario.md](writing-a-scenario.md)** — Full YAML
   schema with every field annotated, plus failure-injection knobs
   and a worked stress-test example.
+- **[policy-governance.md](policy-governance.md)** — Identity-bound
+  policy enforcement: signed per-agent manifests bounding tools, data
+  exposure, spend, and authorization, blocked at runtime and proven by
+  validators that flip on a single `enforcement` toggle.
 
 ## Layer reference
 
